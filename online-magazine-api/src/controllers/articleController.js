@@ -3,7 +3,8 @@ const Article = require("../models/Article");
 module.exports = {
   create: async (req, res) => {
     try {
-      if (!req.user.isConfirmed) return res.status(403).json({ error: "Email not confirmed" });
+      if (!req.user.isConfirmed) return res.status(403).json({ error: "Email not confirmed. Please confirm your account to create articles." });
+      
       const { title, content, published } = req.body;
       const article = await Article.create({ title, content, published: !!published, author: req.user._id });
       res.status(201).json(article);
@@ -47,10 +48,15 @@ module.exports = {
       const a = await Article.findById(req.params.id);
       if (!a) return res.status(404).json({ error: "Not found" });
       if (!a.author.equals(req.user._id)) return res.status(403).json({ error: "Not allowed" });
+      if (!req.user.isConfirmed) {
+          return res.status(403).json({ error: "Email not confirmed. Please confirm your account to manage articles." });
+      }
+
       const updates = {};
       if (req.body.title) updates.title = req.body.title;
       if (req.body.content) updates.content = req.body.content;
       if (typeof req.body.published !== "undefined") updates.published = !!req.body.published;
+      
       Object.assign(a, updates);
       await a.save();
       res.json(a);
@@ -63,7 +69,11 @@ module.exports = {
     try {
       const article = await Article.findById(req.params.id);
       if (!article) return res.status(404).json({ error: "Not found" });
-      if (!article.author.equals(req.user._id)) return res.status(403).json({ error: "Not allowed" });
+      if (!article.author.equals(req.user._id)) return res.status(403).json({ error: "Not allowed" })      
+      if (!req.user.isConfirmed) {
+          return res.status(403).json({ error: "Email not confirmed. Please confirm your account to manage articles." });
+      }
+      
       await Article.deleteOne({ _id: article._id });
       res.json({ message: "Deleted" });
     } catch (err) {
